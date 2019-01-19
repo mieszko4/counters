@@ -1,0 +1,6 @@
+endpoint: https://eu1.prisma.sh/mieszko4-4a9221/prisma/dev
+datamodel: datamodel.prisma
+
+generate:
+  - generator: typescript-client
+    output: ./generated/prisma-client/
