@@ -11,6 +11,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "body-parser": "^1.18.3",
+    "express": "^4.16.4",
     "graphql-yoga": "^1.17.0",
     "prisma-client-lib": "^1.24.0"
   },
