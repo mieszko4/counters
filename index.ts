@@ -29,7 +29,9 @@ const getPoll = async (name) => {
   }
 };
 
-app.get(`/polls`, wrap(async (req, res) => {
+const version = 'v1';
+
+app.get(`/${version}/polls`, wrap(async (req, res) => {
   const polls = await prisma.polls()
   res.json({
     polls: polls.map(poll => ({
@@ -39,7 +41,7 @@ app.get(`/polls`, wrap(async (req, res) => {
   })
 }))
 
-app.get('/polls/:pollName', wrap(async (req, res) => {
+app.get(`/${version}/polls/:pollName`, wrap(async (req, res) => {
   const { pollName } = req.params
   const poll = await getPoll(pollName);
 
@@ -50,7 +52,7 @@ app.get('/polls/:pollName', wrap(async (req, res) => {
   res.json(poll)
 }))
 
-app.post('/polls', wrap(async (req, res) => {
+app.post(`/${version}/polls`, wrap(async (req, res) => {
   const { body } = req;
   const newPoll = await prisma.createPoll({
     name: body.name,
@@ -66,7 +68,7 @@ app.post('/polls', wrap(async (req, res) => {
   res.json(poll)
 }))
 
-app.post('/polls/:pollName/vote', wrap(async (req, res) => {
+app.post(`/${version}/polls/:pollName/vote`, wrap(async (req, res) => {
   const { pollName } = req.params
   const { body } = req;
 
