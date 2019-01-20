@@ -1,15 +1,28 @@
 import { prisma } from './generated/prisma-client'
+import { create } from 'domain';
 
-// A `main` function so that we can use async/await
 async function main() {
-
-  // Create a new user called `Alice`
-  const newUser = await prisma.createUser({ name: 'Alice' })
+  const newUser = await prisma.createUser({
+    name: 'Alice',
+    email: 'a@test.com',
+    posts: {
+      create: [
+        {
+          title: 'Post one'
+        },
+        {
+          title: 'Post two'
+        }
+      ]
+    }
+  })
   console.log(`Created new user: ${newUser.name} (ID: ${newUser.id})`)
 
-  // Read all users from the database and print them to the console
   const allUsers = await prisma.users()
   console.log(allUsers)
+
+  const allPosts = await prisma.posts()
+  console.log(allPosts)
 }
 
 main().catch(e => console.error(e))
