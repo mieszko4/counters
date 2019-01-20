@@ -7,17 +7,34 @@ const app = express()
 app.use(bodyParser.json())
 
 app.get(`/polls`, async (req, res) => {
-  const publishedPosts = await prisma.polls()
-  res.json(publishedPosts)
+  const polls = await prisma.polls()
+  res.json({
+    polls: polls.map(poll => ({
+      name: poll.name,
+      question: poll.question
+    }))
+  })
 })
 
-app.get('/poll/:pollId', async (req, res) => {
-  const { pollId } = req.params
-  const post = await prisma.poll({ id: pollId })
-  const answers = await prisma.poll({ id: pollId }).answers();
+app.get('/poll/:pollName', async (req, res) => {
+  const { pollName } = req.params
+  const poll = await prisma.poll({ name: pollName })
+  const answers = await prisma.poll({ name: pollName }).answers();
+
+  if (!poll) {
+    return res.status(404).json({});
+  }
+
   res.json({
-    ...post,
-    answers
+    question: poll.question,
+    name: poll.name,
+    published_at: poll.createdAt,
+    votes: {
+      counters: answers.map(answer => ({
+        counter: answer.name,
+        votes: answer.count
+      }))
+    }
   })
 })
 

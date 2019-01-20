@@ -2,9 +2,8 @@ type Poll {
   id: ID! @unique
   name: String! @unique
   question: String!
+  createdAt: DateTime!
   answers: [Answer!]!
-
-
 }
 
 type Answer {
