@@ -97,4 +97,32 @@ app.post(`/${version}/polls/:pollName/vote`, wrap(async (req, res) => {
   res.json(poll)
 }))
 
+app.post(`/${version}/polls/:pollName/reset`, wrap(async (req, res) => {
+  const { pollName } = req.params
+  const { body } = req;
+
+  const answers = await prisma.poll({ name: pollName }).answers()
+
+  // verify
+  body.answers.forEach(({ answer }) => {
+    if (!answers.find(a => a.name === answer)) {
+      return res.status(400).json({ message: `answer ${answer} does not exist in poll ${pollName}` });
+    }
+  })
+
+  await pMap(body.answers, async ({ answer }) => {
+    const answerId = answers.find(a => a.name === answer).id;
+
+    await prisma.updateAnswer(
+      {
+        where: { id: answerId },
+        data: { count: 0 },
+      },
+    );
+  });
+
+  const poll = await getPoll(pollName)
+  res.json(poll)
+}))
+
 app.listen(3001, () => console.log('Server is running on http://localhost:3001'))
