@@ -1,0 +1,25 @@
+mutation {
+  createPoll(data: {
+    name: "YourLanguage",
+    question: "Favourite programming language?"
+    answers: {
+      create: [
+        {
+      		name: "Swift"
+        },
+        {
+          name: "Python"
+        },
+        {
+          name: "Objective-C"
+        },
+        {
+          name: "Ruby"
+        }
+      ]
+    }
+  }) {
+    id
+    name
+  }
+}
