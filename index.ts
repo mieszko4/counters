@@ -144,12 +144,15 @@ app.listen(3001, () => console.log('Server is running on http://localhost:3001')
 
 
 // reset invalid votes
+console.log('Running cron job!');
 const everyMinutes = 5;
 setInterval(async () => {
-  await prisma.updateManyVotes({
+  const result = await prisma.updateManyVotes({
     data: { value: 0 },
     where: {
+      value_not: 0,
       validUntil_lt: (new Date()).toISOString()
     }
   });
+  console.log(`Cleaned up ${result.count} passed votes`);
 }, everyMinutes * 60 * 1000);
