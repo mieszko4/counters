@@ -1,1 +1,1 @@
-curl --header "Content-Type: application/json" --request POST --data '{"answers": [{"answer": "Swift", "counter": 1}]}' http://localhost:3000/polls/YourLanguage2/vote
+curl --header "Content-Type: application/json" --request POST --data '{"answers": [{"answer": "Swift", "counter": 10}]}' http://localhost:3001/v1/polls/YourLanguage3/vote

@@ -9,6 +9,15 @@ type Poll {
 type Answer {
   id: ID! @unique
   name: String!
-  count: Int! @default(value: 0)
-  poll: Poll
+  count: Int! @default(value: 0) # deprecated - use votes!
+  votes: [Vote]! @default(value: [])
+  poll: Poll #TODO - make required
+}
+
+type Vote {
+  id: ID! @unique
+  value: Int!
+  createdAt: DateTime!
+  validUntil: DateTime
+  answer: Answer!
 }

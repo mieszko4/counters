@@ -1,4 +1,4 @@
-curl --header "Content-Type: application/json" --request POST --data '{"name":"YourLanguage2","question":"Favourite programming language?","answers":["Swift","Python","Objective-C","Ruby"]}' http://localhost:3000/polls
+curl --header "Content-Type: application/json" --request POST --data '{"name":"YourLanguage3","question":"Favourite programming language?","answers":["Swift","Python","Objective-C","Ruby"]}' http://localhost:3001/v1/polls
 
 # {
 #  "name": "YourLanguage",

@@ -17,14 +17,33 @@ const getPoll = async (name) => {
     return null;
   }
 
+  const processedAnswers = await pMap(answers, async ({ name, id }) => {
+    const positiveCount = await prisma.votesConnection({
+      where: {
+        value_gt: 0,
+        answer: { id }
+      }
+    }).aggregate().count()
+    const negativeCount = await prisma.votesConnection({
+      where: {
+        value_lt: 0,
+        answer: { id }
+      }
+    }).aggregate().count()
+
+    return {
+      answer: name,
+      counter: positiveCount - negativeCount
+    }
+  });
+  
+  // TODO use aggreage value when available - https://github.com/prisma/prisma/issues/1312
+
   return {
     question: poll.question,
     published_at: poll.createdAt,
     details: {
-      answers: answers.map(answer => ({
-        answer: answer.name,
-        counter: answer.count
-      }))
+      answers: processedAnswers
     }
   }
 };
@@ -75,22 +94,28 @@ app.post(`/${version}/polls/:pollName/vote`, wrap(async (req, res) => {
   const answers = await prisma.poll({ name: pollName }).answers()
 
   // verify
-  body.answers.forEach(({ answer }) => {
+  body.answers.forEach(({ answer, counter }) => {
     if (!answers.find(a => a.name === answer)) {
       return res.status(400).json({ message: `answer ${answer} does not exist in poll ${pollName}` });
     }
+
+    if (counter !== -1 && counter !== 1) {
+      return res.status(400).json({ message: `counter ${counter} for answer ${answer} can be eithe 1 or -1` });
+    }
   })
 
-  await pMap(body.answers, async ({ answer, counter }) => {
+  await pMap(body.answers, async ({ answer, counter, validTill }) => {
     const answerId = answers.find(a => a.name === answer).id;
 
-    const oldAnswer = await prisma.answer({ id: answerId });
-    await prisma.updateAnswer(
-      {
-        where: { id: answerId },
-        data: { count: oldAnswer.count + counter },
-      },
-    );
+    await prisma.createVote({
+      value: counter,
+      validUntil: validTill,
+      answer: {
+        connect: {
+          id: answerId
+        }
+      }
+    })
   });
 
   const poll = await getPoll(pollName)
@@ -101,25 +126,12 @@ app.post(`/${version}/polls/:pollName/reset`, wrap(async (req, res) => {
   const { pollName } = req.params
   const { body } = req;
 
-  const answers = await prisma.poll({ name: pollName }).answers()
-
-  // verify
-  body.answers.forEach(({ answer }) => {
-    if (!answers.find(a => a.name === answer)) {
-      return res.status(400).json({ message: `answer ${answer} does not exist in poll ${pollName}` });
+  await prisma.deleteManyVotes({
+    answer: {
+      poll: { name: pollName },
+      name_in: body.answers
     }
   })
-
-  await pMap(body.answers, async ({ answer }) => {
-    const answerId = answers.find(a => a.name === answer).id;
-
-    await prisma.updateAnswer(
-      {
-        where: { id: answerId },
-        data: { count: 0 },
-      },
-    );
-  });
 
   const poll = await getPoll(pollName)
   res.json(poll)
