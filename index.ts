@@ -48,7 +48,7 @@ const getPoll = async (name) => {
   }
 };
 
-const version = 'v1';
+const version = 'v2';
 
 app.get(`/${version}/polls`, wrap(async (req, res) => {
   const polls = await prisma.polls()
@@ -141,3 +141,15 @@ app.post(`/${version}/polls/:pollName/reset`, wrap(async (req, res) => {
 }))
 
 app.listen(3001, () => console.log('Server is running on http://localhost:3001'))
+
+
+// reset invalid votes
+const everyMinutes = 5;
+setInterval(async () => {
+  await prisma.updateManyVotes({
+    data: { value: 0 },
+    where: {
+      validUntil_lt: (new Date()).toISOString()
+    }
+  });
+}, everyMinutes * 60 * 1000);
