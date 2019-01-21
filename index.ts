@@ -126,12 +126,15 @@ app.post(`/${version}/polls/:pollName/reset`, wrap(async (req, res) => {
   const { pollName } = req.params
   const { body } = req;
 
-  await prisma.deleteManyVotes({
-    answer: {
-      poll: { name: pollName },
-      name_in: body.answers
+  await prisma.updateManyVotes({
+    data: { value: 0 },
+    where: {
+      answer: {
+        poll: { name: pollName },
+        name_in: body.answers.map(({ answer }) => answer)
+      }
     }
-  })
+  });
 
   const poll = await getPoll(pollName)
   res.json(poll)
