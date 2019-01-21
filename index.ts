@@ -9,6 +9,17 @@ app.use(bodyParser.json())
 // wrapper for catching async errors
 const wrap = fn => (...args) => fn(...args).catch(args[2])
 
+const cleanExpiredVotes = async () => {
+  const result = await prisma.updateManyVotes({
+    data: { value: 0 },
+    where: {
+      value_not: 0,
+      validUntil_lt: (new Date()).toISOString()
+    }
+  });
+  console.log(`Cleaned up ${result.count} passed votes`);
+}
+
 const getPoll = async (name) => {
   const poll = await prisma.poll({ name })
   const answers = await prisma.poll({ name }).answers();
@@ -17,6 +28,7 @@ const getPoll = async (name) => {
     return null;
   }
 
+  await cleanExpiredVotes();
   const processedAnswers = await pMap(answers, async ({ name, id }) => {
     const positiveCount = await prisma.votesConnection({
       where: {
@@ -141,18 +153,3 @@ app.post(`/${version}/polls/:pollName/reset`, wrap(async (req, res) => {
 }))
 
 app.listen(3001, () => console.log('Server is running on http://localhost:3001'))
-
-
-// reset invalid votes
-console.log('Running cron job!');
-const everyMinutes = 5;
-setInterval(async () => {
-  const result = await prisma.updateManyVotes({
-    data: { value: 0 },
-    where: {
-      value_not: 0,
-      validUntil_lt: (new Date()).toISOString()
-    }
-  });
-  console.log(`Cleaned up ${result.count} passed votes`);
-}, everyMinutes * 60 * 1000);
