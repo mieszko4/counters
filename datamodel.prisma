@@ -3,14 +3,14 @@ type Poll {
   name: String! @unique
   question: String!
   createdAt: DateTime!
-  answers: [Answer!]!
+  answers: [Answer!]! @relation(name: "AnswerPoll", onDelete: CASCADE)
 }
 
 type Answer {
   id: ID! @unique
   name: String!
-  votes: [Vote!]! @default(value: [])
-  poll: Poll!
+  votes: [Vote!]! @default(value: []) @relation(name: "VoteAnswer", onDelete: CASCADE)
+  poll: Poll! @relation(name: "AnswerPoll", onDelete: CASCADE)
 }
 
 type Vote {
@@ -20,5 +20,5 @@ type Vote {
   isInvalid: Boolean! @default(value: "false")
   createdAt: DateTime!
   validUntil: DateTime
-  answer: Answer!
+  answer: Answer! @relation(name: "VoteAnswer", onDelete: CASCADE)
 }
