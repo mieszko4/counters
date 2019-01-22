@@ -85,6 +85,11 @@ app.get(`/${version}/polls/:pollName`, wrap(async (req, res) => {
 
 app.post(`/${version}/polls`, wrap(async (req, res) => {
   const { body } = req;
+
+  if (await prisma.poll({ name: body.name })) {
+    return res.status(409).json({})
+  }
+
   const newPoll = await prisma.createPoll({
     name: body.name,
     question: body.question,
