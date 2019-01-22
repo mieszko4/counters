@@ -1,5 +1,5 @@
 import { prisma } from './generated/prisma-client'
-import { groupBy } from 'lodash'
+import { groupBy, flatten } from 'lodash'
 import pMap from 'p-map';
 const express = require('express')
 const bodyParser = require('body-parser')
@@ -151,6 +151,34 @@ app.post(`/${version}/polls`, wrap(async (req, res) => {
   const poll = await getPoll(newPoll.name)
   res.status(201).json(poll)
 }))
+
+app.get(`/${version}/polls/:pollName/vote`, wrap(async (req, res) => {
+  const { pollName } = req.params
+  const { UUID } = req.query
+  console.log(req.query)
+
+  // TODO use nesting when done https://github.com/prisma/prisma/issues/3668
+  const answers = await prisma.poll({ name: pollName }).answers()
+  const groupedVotes = await pMap(answers, async (answer) => {
+    const votes = await prisma.votes({ where: {
+      uuid: UUID,
+      answer: {
+        id: answer.id
+      }
+    }});
+
+    return votes.map(vote => ({
+      answer: answer.name,
+      counter: vote.value,
+      validTill: vote.validUntil,
+      UUID: vote.uuid
+    }));
+  })
+
+  res.json({
+    answers: flatten(groupedVotes)
+  })
+}));
 
 app.post(`/${version}/polls/:pollName/vote`, wrap(async (req, res) => {
   const { pollName } = req.params
