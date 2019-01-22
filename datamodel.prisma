@@ -16,6 +16,7 @@ type Answer {
 type Vote {
   id: ID! @unique
   value: Int!
+  uuid: String
   isInvalid: Boolean! @default(value: "false")
   createdAt: DateTime!
   validUntil: DateTime

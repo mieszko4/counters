@@ -1,4 +1,5 @@
 import { prisma } from './generated/prisma-client'
+import { groupBy } from 'lodash'
 import pMap from 'p-map';
 const express = require('express')
 const bodyParser = require('body-parser')
@@ -50,14 +51,48 @@ const getPoll = async (name) => {
       counter: positiveCount - negativeCount
     }
   });
-  
-  // TODO use aggreage value when available - https://github.com/prisma/prisma/issues/1312
 
   return {
     question: poll.question,
     published_at: poll.createdAt,
     details: {
       answers: processedAnswers
+    }
+  }
+};
+
+const getStat = async (name) => {
+  const poll = await prisma.poll({ name })
+  const answers = await prisma.poll({ name }).answers();
+
+  if (!poll) {
+    return null;
+  }
+
+  await cleanExpiredVotes();
+
+  // TODO VERY SLOW - use aggreage value when available - https://github.com/prisma/prisma/issues/1312
+  const allVoters = await prisma.votes({
+    where: {
+      answer: {
+        poll: {
+          name
+        }
+      },
+      uuid_not: null
+    }
+  });
+  const activeVoters = allVoters.filter(voter => !voter.isInvalid)
+
+  const allVotersCount = Object.keys(groupBy(allVoters, 'uuid')).length;
+  const activeVotersCount = Object.keys(groupBy(activeVoters, 'uuid')).length;
+
+  return {
+    question: poll.question,
+    published_at: poll.createdAt,
+    details: {
+      voters: allVotersCount,
+      active_voters: activeVotersCount
     }
   }
 };
@@ -85,6 +120,17 @@ app.get(`/${version}/polls/:pollName`, wrap(async (req, res) => {
   res.json(poll)
 }))
 
+app.get(`/${version}/polls/:pollName/stat`, wrap(async (req, res) => {
+  const { pollName } = req.params
+  const stat = await getStat(pollName);
+
+  if (!stat) {
+    return res.status(404).json({});
+  }
+
+  res.json(stat)
+}))
+
 app.post(`/${version}/polls`, wrap(async (req, res) => {
   const { body } = req;
 
@@ -103,7 +149,7 @@ app.post(`/${version}/polls`, wrap(async (req, res) => {
   })
 
   const poll = await getPoll(newPoll.name)
-  res.json(poll)
+  res.status(201).json(poll)
 }))
 
 app.post(`/${version}/polls/:pollName/vote`, wrap(async (req, res) => {
@@ -123,12 +169,13 @@ app.post(`/${version}/polls/:pollName/vote`, wrap(async (req, res) => {
     }
   })
 
-  await pMap(body.answers, async ({ answer, counter, validTill }) => {
+  await pMap(body.answers, async ({ answer, counter, validTill, UUID }) => {
     const answerId = answers.find(a => a.name === answer).id;
 
     await prisma.createVote({
       value: counter,
       validUntil: validTill,
+      ...(UUID ? { uuid: UUID } : {}),
       answer: {
         connect: {
           id: answerId
@@ -138,7 +185,7 @@ app.post(`/${version}/polls/:pollName/vote`, wrap(async (req, res) => {
   });
 
   const poll = await getPoll(pollName)
-  res.json(poll)
+  res.status(201).json(poll)
 }))
 
 app.post(`/${version}/polls/:pollName/reset`, wrap(async (req, res) => {
@@ -156,7 +203,7 @@ app.post(`/${version}/polls/:pollName/reset`, wrap(async (req, res) => {
   });
 
   const poll = await getPoll(pollName)
-  res.json(poll)
+  res.status(201).json(poll)
 }))
 
 app.listen(3001, () => console.log('Server is running on http://localhost:3001'))
