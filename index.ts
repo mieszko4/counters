@@ -11,9 +11,9 @@ const wrap = fn => (...args) => fn(...args).catch(args[2])
 
 const cleanExpiredVotes = async () => {
   const result = await prisma.updateManyVotes({
-    data: { value: 0 },
+    data: { isInvalid: true },
     where: {
-      value_not: 0,
+      isInvalid: false,
       validUntil_lt: (new Date()).toISOString()
     }
   });
@@ -23,7 +23,7 @@ const cleanExpiredVotes = async () => {
 const getPoll = async (name) => {
   const poll = await prisma.poll({ name })
   const answers = await prisma.poll({ name }).answers();
-
+  
   if (!poll) {
     return null;
   }
@@ -33,12 +33,14 @@ const getPoll = async (name) => {
     const positiveCount = await prisma.votesConnection({
       where: {
         value_gt: 0,
+        isInvalid: false,
         answer: { id }
       }
     }).aggregate().count()
     const negativeCount = await prisma.votesConnection({
       where: {
         value_lt: 0,
+        isInvalid: false,
         answer: { id }
       }
     }).aggregate().count()
@@ -144,7 +146,7 @@ app.post(`/${version}/polls/:pollName/reset`, wrap(async (req, res) => {
   const { body } = req;
 
   await prisma.updateManyVotes({
-    data: { value: 0 },
+    data: { isInvalid: true },
     where: {
       answer: {
         poll: { name: pollName },
