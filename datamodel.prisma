@@ -1,24 +1,28 @@
 type Poll {
-  id: ID! @unique
+  id: ID! @id
   name: String! @unique
   question: String!
-  createdAt: DateTime!
-  answers: [Answer!]! @relation(name: "AnswerPoll", onDelete: CASCADE)
+  updatedAt: DateTime! @updatedAt
+  createdAt: DateTime! @createdAt
+  answers: [Answer!]! @relation(name: "AnswerPoll")
 }
 
 type Answer {
-  id: ID! @unique
+  id: ID! @id
   name: String!
-  votes: [Vote!]! @default(value: []) @relation(name: "VoteAnswer", onDelete: CASCADE)
-  poll: Poll! @relation(name: "AnswerPoll", onDelete: CASCADE)
+  updatedAt: DateTime! @updatedAt
+  createdAt: DateTime! @createdAt
+  votes: [Vote!]! @relation(name: "VoteAnswer")
+  poll: Poll! @relation(name: "AnswerPoll", link: INLINE, onDelete: CASCADE)
 }
 
 type Vote {
-  id: ID! @unique
+  id: ID! @id
   value: Int!
   uuid: String
-  isInvalid: Boolean! @default(value: "false")
-  createdAt: DateTime!
+  isInvalid: Boolean! @default(value: false)
+  updatedAt: DateTime! @updatedAt
+  createdAt: DateTime! @createdAt
   validUntil: DateTime
-  answer: Answer! @relation(name: "VoteAnswer", onDelete: CASCADE)
+  answer: Answer! @relation(name: "VoteAnswer", link: INLINE, onDelete: CASCADE)
 }
