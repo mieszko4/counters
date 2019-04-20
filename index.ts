@@ -235,6 +235,19 @@ app.post(`/${version}/polls/:pollName/reset`, wrap(async (req, res) => {
   res.status(201).json(poll)
 }))
 
+app.delete(`/${version}/polls/:pollName`, wrap(async (req, res) => {
+  const { pollName, paramName } = req.params
+
+  const poll = await getPoll(pollName);
+  if (!poll) {
+    return res.status(404).json({});
+  }
+
+  await prisma.deletePoll({ name: pollName })
+
+  res.status(204).json({})
+}))
+
 // params
 app.get(`/${version}/polls/:pollName/params/:paramName`, wrap(async (req, res) => {
   const { pollName, paramName } = req.params
