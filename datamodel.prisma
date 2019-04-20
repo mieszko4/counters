@@ -4,15 +4,15 @@ type Poll {
   question: String!
   updatedAt: DateTime! @updatedAt
   createdAt: DateTime! @createdAt
-  answers: [Answer!]! @relation(name: "AnswerPoll")
-  params: [Param!]! @relation(name: "ParamPoll")
+  answers: [Answer!]! @relation(name: "AnswerPoll", onDelete: CASCADE)
+  params: [Param!]! @relation(name: "ParamPoll", onDelete: CASCADE)
 }
 
 type Param {
   id: ID! @id
   key: String! @unique
   value: String
-  poll: Poll! @relation(name: "ParamPoll", link: INLINE, onDelete: CASCADE)
+  poll: Poll! @relation(name: "ParamPoll", link: INLINE)
 }
 
 type Answer {
@@ -20,8 +20,8 @@ type Answer {
   name: String!
   updatedAt: DateTime! @updatedAt
   createdAt: DateTime! @createdAt
-  votes: [Vote!]! @relation(name: "VoteAnswer")
-  poll: Poll! @relation(name: "AnswerPoll", link: INLINE, onDelete: CASCADE)
+  votes: [Vote!]! @relation(name: "VoteAnswer", onDelete: CASCADE)
+  poll: Poll! @relation(name: "AnswerPoll", link: INLINE)
 }
 
 type Vote {
@@ -32,5 +32,5 @@ type Vote {
   updatedAt: DateTime! @updatedAt
   createdAt: DateTime! @createdAt
   validUntil: DateTime
-  answer: Answer! @relation(name: "VoteAnswer", link: INLINE, onDelete: CASCADE)
+  answer: Answer! @relation(name: "VoteAnswer", link: INLINE)
 }
