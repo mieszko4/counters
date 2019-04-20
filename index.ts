@@ -53,6 +53,7 @@ const getPoll = async (name) => {
   });
 
   return {
+    id: poll.id,
     question: poll.question,
     published_at: poll.createdAt,
     details: {
@@ -232,6 +233,88 @@ app.post(`/${version}/polls/:pollName/reset`, wrap(async (req, res) => {
 
   const poll = await getPoll(pollName)
   res.status(201).json(poll)
+}))
+
+// params
+app.get(`/${version}/polls/:pollName/params/:paramName`, wrap(async (req, res) => {
+  const { pollName, paramName } = req.params
+
+  const poll = await getPoll(pollName);
+  if (!poll) {
+    return res.status(404).json({});
+  }
+  
+  const param = await prisma.param({ key: paramName });
+  if (!param) {
+    return res.status(404).json({});
+  }
+
+  res.json({
+    paramName,
+    paramValue: param.value,
+  })
+}))
+
+app.post(`/${version}/polls/:pollName/params`, wrap(async (req, res) => {
+  const { pollName } = req.params
+  const { body } = req;
+
+  const poll = await getPoll(pollName);
+  if (!poll) {
+    return res.status(404).json({});
+  }
+
+  const paramExists = await prisma.$exists.param({ key: body.paramName });
+
+  let param;
+  if (!paramExists) {
+    param = await prisma.createParam({
+      key: body.paramName,
+      value: body.paramValue,
+      poll: {
+        connect: {
+          id: poll.id,
+        }
+      }
+    })
+  } else {
+    param = await prisma.updateParam({
+      where: {
+        key: body.paramName,
+      },
+      data: {
+        value: body.paramValue,
+        poll: {
+          connect: {
+            id: poll.id,
+          }
+        }
+      }
+    })
+  }
+  
+  res.status(201).json({
+    paramName: param.name,
+    paramValue: param.value,
+  })
+}))
+
+app.delete(`/${version}/polls/:pollName/params/:paramName`, wrap(async (req, res) => {
+  const { pollName, paramName } = req.params
+
+  const poll = await getPoll(pollName);
+  if (!poll) {
+    return res.status(404).json({});
+  }
+  
+  const param = await prisma.param({ key: paramName });
+  if (!param) {
+    return res.status(404).json({});
+  }
+
+  await prisma.deleteParam({ key: paramName })
+
+  res.status(204).json({})
 }))
 
 app.listen(3001, () => console.log('Server is running on http://localhost:3001'))
