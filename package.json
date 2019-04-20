@@ -20,7 +20,7 @@
     "graphql-yoga": "^1.17.0",
     "lodash": "^4.17.11",
     "p-map": "^2.0.0",
-    "prisma-client-lib": "^1.24.0"
+    "prisma-client-lib": "^1.31.1"
   },
   "devDependencies": {
     "node-fetch": "^2.3.0",
