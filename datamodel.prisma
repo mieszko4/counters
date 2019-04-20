@@ -5,6 +5,14 @@ type Poll {
   updatedAt: DateTime! @updatedAt
   createdAt: DateTime! @createdAt
   answers: [Answer!]! @relation(name: "AnswerPoll")
+  params: [Param!]! @relation(name: "ParamPoll")
+}
+
+type Param {
+  id: ID! @id
+  key: String! @unique
+  value: String
+  poll: Poll! @relation(name: "ParamPoll", link: INLINE, onDelete: CASCADE)
 }
 
 type Answer {
