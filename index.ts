@@ -39,8 +39,8 @@ const getVoters = async (name) => {
   const activeVotersCount = Object.keys(groupBy(activeVoters, 'uuid')).length;
 
   return {
-    allVotersCount,
-    activeVotersCount,
+    voters: allVotersCount,
+    active_voters: activeVotersCount,
   }
 }
 
@@ -96,18 +96,10 @@ const getStat = async (name) => {
 
   await cleanExpiredVotes();
 
-  const {
-    allVotersCount,
-    activeVotersCount,
-  } = await getVoters(name);
-
   return {
     question: poll.question,
     published_at: poll.createdAt,
-    details: {
-      voters: allVotersCount,
-      active_voters: activeVotersCount
-    }
+    details: await getVoters(name),
   }
 };
 
