@@ -63,7 +63,6 @@ const getPoll = async (name) => {
 
 const getStat = async (name) => {
   const poll = await prisma.poll({ name })
-  const answers = await prisma.poll({ name }).answers();
 
   if (!poll) {
     return null;
@@ -265,6 +264,21 @@ app.get(`/${version}/polls/:pollName/params/:paramName`, wrap(async (req, res) =
     paramName,
     paramValue: param.value,
   })
+}))
+
+app.get(`/${version}/polls/:pollName/params`, wrap(async (req, res) => {
+  const { pollName } = req.params
+
+  const poll = await prisma.poll({ name: pollName });
+  if (!poll) {
+    return res.status(404).json({});
+  }
+  
+  const params = await prisma.poll({ name: pollName }).params();
+  res.json(params.map(param => ({
+    paramName: param.key,
+    paramValue: param.value,
+  })))
 }))
 
 app.post(`/${version}/polls/:pollName/params`, wrap(async (req, res) => {
