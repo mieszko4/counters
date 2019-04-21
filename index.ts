@@ -99,7 +99,16 @@ const getStat = async (name) => {
 const version = 'v2';
 
 app.get(`/${version}/polls`, wrap(async (req, res) => {
-  const polls = await prisma.polls()
+  const { paramName, paramValue} = req.query;
+
+  const polls = await prisma.polls(paramName && paramValue ? ({
+    where: {
+      params_some: {
+        key: paramName,
+        value: paramValue,
+      }
+    }
+  }) : undefined)
   res.json({
     polls: polls.map(poll => ({
       name: poll.name,
