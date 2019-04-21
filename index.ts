@@ -44,7 +44,7 @@ const getVoters = async (name) => {
   }
 }
 
-const getPoll = async (name) => {
+const getPoll = async (name, withStat = false) => {
   const poll = await prisma.poll({ name })
   const answers = await prisma.poll({ name }).answers();
   
@@ -79,7 +79,10 @@ const getPoll = async (name) => {
     question: poll.question,
     published_at: poll.createdAt,
     details: {
-      answers: processedAnswers
+      answers: processedAnswers,
+      ...withStat && {
+        stats: await getVoters(name),
+      },
     }
   }
 };
@@ -131,7 +134,7 @@ app.get(`/${version}/polls`, wrap(async (req, res) => {
 
 app.get(`/${version}/polls/:pollName`, wrap(async (req, res) => {
   const { pollName } = req.params
-  const poll = await getPoll(pollName);
+  const poll = await getPoll(pollName, true);
 
   if (!poll) {
     return res.status(404).json({});
