@@ -299,10 +299,12 @@ app.get(`/${version}/polls/:pollName/params`, wrap(async (req, res) => {
   }
   
   const params = await prisma.poll({ name: pollName }).params();
-  res.json(params.map(param => ({
-    paramName: param.key,
-    paramValue: param.value,
-  })))
+  res.json({
+    params: params.map(param => ({
+      paramName: param.key,
+      paramValue: param.value,
+    }))
+  })
 }))
 
 app.post(`/${version}/polls/:pollName/params`, wrap(async (req, res) => {
