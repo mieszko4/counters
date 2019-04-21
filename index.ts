@@ -21,6 +21,29 @@ const cleanExpiredVotes = async () => {
   console.log(`Cleaned up ${result.count} passed votes`);
 }
 
+const getVoters = async (name) => {
+  // TODO VERY SLOW - use aggreage value when available - https://github.com/prisma/prisma/issues/1312
+  const allVoters = await prisma.votes({
+    where: {
+      answer: {
+        poll: {
+          name
+        }
+      },
+      uuid_not: null
+    }
+  });
+  const activeVoters = allVoters.filter(voter => !voter.isInvalid)
+
+  const allVotersCount = Object.keys(groupBy(allVoters, 'uuid')).length;
+  const activeVotersCount = Object.keys(groupBy(activeVoters, 'uuid')).length;
+
+  return {
+    allVotersCount,
+    activeVotersCount,
+  }
+}
+
 const getPoll = async (name) => {
   const poll = await prisma.poll({ name })
   const answers = await prisma.poll({ name }).answers();
@@ -70,21 +93,10 @@ const getStat = async (name) => {
 
   await cleanExpiredVotes();
 
-  // TODO VERY SLOW - use aggreage value when available - https://github.com/prisma/prisma/issues/1312
-  const allVoters = await prisma.votes({
-    where: {
-      answer: {
-        poll: {
-          name
-        }
-      },
-      uuid_not: null
-    }
-  });
-  const activeVoters = allVoters.filter(voter => !voter.isInvalid)
-
-  const allVotersCount = Object.keys(groupBy(allVoters, 'uuid')).length;
-  const activeVotersCount = Object.keys(groupBy(activeVoters, 'uuid')).length;
+  const {
+    allVotersCount,
+    activeVotersCount,
+  } = await getVoters(name);
 
   return {
     question: poll.question,
