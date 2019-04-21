@@ -101,11 +101,11 @@ const version = 'v2';
 app.get(`/${version}/polls`, wrap(async (req, res) => {
   const { paramName, paramValue} = req.query;
 
-  const polls = await prisma.polls(paramName && paramValue ? ({
+  const polls = await prisma.polls(paramName || paramValue ? ({
     where: {
       params_some: {
-        key: paramName,
-        value: paramValue,
+        ...paramName && { key: paramName },
+        ...(paramName && paramValue) && { value: paramValue },
       }
     }
   }) : undefined)
