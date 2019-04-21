@@ -53,7 +53,6 @@ const getPoll = async (name) => {
   });
 
   return {
-    id: poll.id,
     question: poll.question,
     published_at: poll.createdAt,
     details: {
@@ -236,9 +235,9 @@ app.post(`/${version}/polls/:pollName/reset`, wrap(async (req, res) => {
 }))
 
 app.delete(`/${version}/polls/:pollName`, wrap(async (req, res) => {
-  const { pollName, paramName } = req.params
+  const { pollName } = req.params
 
-  const poll = await getPoll(pollName);
+  const poll = await prisma.poll({ name: pollName });
   if (!poll) {
     return res.status(404).json({});
   }
@@ -252,7 +251,7 @@ app.delete(`/${version}/polls/:pollName`, wrap(async (req, res) => {
 app.get(`/${version}/polls/:pollName/params/:paramName`, wrap(async (req, res) => {
   const { pollName, paramName } = req.params
 
-  const poll = await getPoll(pollName);
+  const poll = await prisma.poll({ name: pollName });
   if (!poll) {
     return res.status(404).json({});
   }
@@ -272,7 +271,7 @@ app.post(`/${version}/polls/:pollName/params`, wrap(async (req, res) => {
   const { pollName } = req.params
   const { body } = req;
 
-  const poll = await getPoll(pollName);
+  const poll = await prisma.poll({ name: pollName });
   if (!poll) {
     return res.status(404).json({});
   }
@@ -315,7 +314,7 @@ app.post(`/${version}/polls/:pollName/params`, wrap(async (req, res) => {
 app.delete(`/${version}/polls/:pollName/params/:paramName`, wrap(async (req, res) => {
   const { pollName, paramName } = req.params
 
-  const poll = await getPoll(pollName);
+  const poll = await prisma.poll({ name: pollName });
   if (!poll) {
     return res.status(404).json({});
   }
