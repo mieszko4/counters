@@ -80,10 +80,10 @@ const getPoll = async (name, withStat = false) => {
     published_at: poll.createdAt,
     details: {
       answers: processedAnswers,
-      ...withStat && {
-        stats: await getVoters(name),
-      },
-    }
+    },
+    ...withStat && {
+      stats: await getVoters(name),
+    },
   }
 };
 
