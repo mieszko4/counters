@@ -382,7 +382,7 @@ app.delete(`/${version}/polls/:pollName/params/:paramName`, wrap(async (req, res
     return res.status(404).json({});
   }
 
-  await prisma.deleteParam({ key: paramName })
+  await prisma.deleteManyParams({ key: paramName, poll: { name: pollName} })
 
   res.status(204).json({})
 }))
