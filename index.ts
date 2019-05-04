@@ -304,44 +304,54 @@ app.get(`/${version}/polls/:pollName/params`, wrap(async (req, res) => {
 app.post(`/${version}/polls/:pollName/params`, wrap(async (req, res) => {
   const { pollName } = req.params
   const { body } = req;
+  const { parameters } = body;
+
+  if (!Array.isArray(parameters)) {
+    return res.status(400).json({ message: 'parameters is malformed' });
+  }
 
   const poll = await prisma.poll({ name: pollName });
   if (!poll) {
     return res.status(404).json({});
   }
 
-  const paramExists = await prisma.$exists.param({ key: body.paramName });
+  await pMap(parameters, async (parameter) => {
+    const paramExists = await prisma.$exists.param({ key: parameter.paramName });
 
-  let param;
-  if (!paramExists) {
-    param = await prisma.createParam({
-      key: body.paramName,
-      value: body.paramValue,
-      poll: {
-        connect: {
-          id: poll.id,
-        }
-      }
-    })
-  } else {
-    param = await prisma.updateParam({
-      where: {
-        key: body.paramName,
-      },
-      data: {
-        value: body.paramValue,
+    let param;
+    if (!paramExists) {
+      param = await prisma.createParam({
+        key: parameter.paramName,
+        value: parameter.paramValue,
         poll: {
           connect: {
             id: poll.id,
           }
         }
-      }
-    })
-  }
-  
+      })
+    } else {
+      param = await prisma.updateParam({
+        where: {
+          key: parameter.paramName,
+        },
+        data: {
+          value: parameter.paramValue,
+          poll: {
+            connect: {
+              id: poll.id,
+            }
+          }
+        }
+      })
+    }
+  });
+
+  const params = await prisma.poll({ name: pollName }).params();
   res.status(201).json({
-    paramName: param.name,
-    paramValue: param.value,
+    params: params.map(param => ({
+      paramName: param.key,
+      paramValue: param.value,
+    }))
   })
 }))
 
