@@ -125,8 +125,10 @@ app.get(`/${version}/polls`, wrap(async (req, res) => {
 }))
 
 app.get(`/${version}/polls/:pollName`, wrap(async (req, res) => {
+  const { withStat } = req.query;
+
   const { pollName } = req.params
-  const poll = await getPoll(pollName, true);
+  const poll = await getPoll(pollName, withStat === 'true');
 
   if (!poll) {
     return res.status(404).json({});
