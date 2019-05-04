@@ -273,7 +273,7 @@ app.get(`/${version}/polls/:pollName/params/:paramName`, wrap(async (req, res) =
     return res.status(404).json({});
   }
   
-  const param = await prisma.param({ key: paramName });
+  const [param] = await prisma.poll({name: pollName}).params({ where: { key: paramName }});
   if (!param) {
     return res.status(404).json({});
   }
@@ -316,31 +316,30 @@ app.post(`/${version}/polls/:pollName/params`, wrap(async (req, res) => {
   }
 
   await pMap(params, async (parameter) => {
-    const paramExists = await prisma.$exists.param({ key: parameter.paramName });
+    const paramExists = await prisma.$exists.param({ key: parameter.paramName, poll: {
+      name: pollName
+    } });
 
-    let param;
     if (!paramExists) {
-      param = await prisma.createParam({
+      await prisma.createParam({
         key: parameter.paramName,
         value: parameter.paramValue,
         poll: {
           connect: {
-            id: poll.id,
+            name: pollName
           }
         }
       })
     } else {
-      param = await prisma.updateParam({
+      await prisma.updateManyParams({
         where: {
           key: parameter.paramName,
+          poll: {
+            name: pollName
+          }
         },
         data: {
           value: parameter.paramValue,
-          poll: {
-            connect: {
-              id: poll.id,
-            }
-          }
         }
       })
     }
@@ -378,7 +377,7 @@ app.delete(`/${version}/polls/:pollName/params/:paramName`, wrap(async (req, res
     return res.status(404).json({});
   }
   
-  const param = await prisma.param({ key: paramName });
+  const [param] = await prisma.poll({name: pollName}).params({ where: { key: paramName }});
   if (!param) {
     return res.status(404).json({});
   }

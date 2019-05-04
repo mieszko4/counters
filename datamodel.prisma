@@ -10,7 +10,7 @@ type Poll {
 
 type Param {
   id: ID! @id
-  key: String! @unique
+  key: String!
   value: String
   poll: Poll! @relation(name: "ParamPoll", link: INLINE)
 }
