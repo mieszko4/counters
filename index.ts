@@ -169,10 +169,41 @@ app.post(`/${version}/polls`, wrap(async (req, res) => {
   res.status(201).json(poll)
 }))
 
+app.post(`/${version}/polls/:pollName/reset`, wrap(async (req, res) => {
+  const { pollName } = req.params
+  const { body } = req;
+
+  await prisma.updateManyVotes({
+    data: { isInvalid: true },
+    where: {
+      answer: {
+        poll: { name: pollName },
+        name_in: body.answers.map(({ answer }) => answer)
+      }
+    }
+  });
+
+  const poll = await getPoll(pollName)
+  res.status(201).json(poll)
+}))
+
+app.delete(`/${version}/polls/:pollName`, wrap(async (req, res) => {
+  const { pollName } = req.params
+
+  const poll = await prisma.poll({ name: pollName });
+  if (!poll) {
+    return res.status(404).json({});
+  }
+
+  await prisma.deletePoll({ name: pollName })
+
+  res.status(204).json({})
+}))
+
+// votes
 app.get(`/${version}/polls/:pollName/vote`, wrap(async (req, res) => {
   const { pollName } = req.params
   const { UUID } = req.query
-  console.log(req.query)
 
   // TODO use nesting when done https://github.com/prisma/prisma/issues/3668
   const answers = await prisma.poll({ name: pollName }).answers()
@@ -185,6 +216,7 @@ app.get(`/${version}/polls/:pollName/vote`, wrap(async (req, res) => {
     }});
 
     return votes.map(vote => ({
+      id: vote.id,
       answer: answer.name,
       counter: vote.value,
       validTill: vote.validUntil,
@@ -231,37 +263,6 @@ app.post(`/${version}/polls/:pollName/vote`, wrap(async (req, res) => {
 
   const poll = await getPoll(pollName)
   res.status(201).json(poll)
-}))
-
-app.post(`/${version}/polls/:pollName/reset`, wrap(async (req, res) => {
-  const { pollName } = req.params
-  const { body } = req;
-
-  await prisma.updateManyVotes({
-    data: { isInvalid: true },
-    where: {
-      answer: {
-        poll: { name: pollName },
-        name_in: body.answers.map(({ answer }) => answer)
-      }
-    }
-  });
-
-  const poll = await getPoll(pollName)
-  res.status(201).json(poll)
-}))
-
-app.delete(`/${version}/polls/:pollName`, wrap(async (req, res) => {
-  const { pollName } = req.params
-
-  const poll = await prisma.poll({ name: pollName });
-  if (!poll) {
-    return res.status(404).json({});
-  }
-
-  await prisma.deletePoll({ name: pollName })
-
-  res.status(204).json({})
 }))
 
 // params
