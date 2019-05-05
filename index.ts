@@ -265,6 +265,24 @@ app.post(`/${version}/polls/:pollName/vote`, wrap(async (req, res) => {
   res.status(201).json(poll)
 }))
 
+app.delete(`/${version}/polls/:pollName/vote/:voteId`, wrap(async (req, res) => {
+  const { pollName, voteId } = req.params
+
+  const poll = await prisma.poll({ name: pollName });
+  if (!poll) {
+    return res.status(404).json({});
+  }
+
+  const vote = await prisma.vote({ id: voteId });
+  if (!vote) {
+    return res.status(404).json({});
+  }
+
+  await prisma.deleteVote({ id: voteId })
+
+  res.status(204).json({})
+}))
+
 // params
 app.get(`/${version}/polls/:pollName/params/:paramName`, wrap(async (req, res) => {
   const { pollName, paramName } = req.params
