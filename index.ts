@@ -204,17 +204,26 @@ app.delete(`/${version}/polls/:pollName`, wrap(async (req, res) => {
 // votes
 app.get(`/${version}/polls/:pollName/vote`, wrap(async (req, res) => {
   const { pollName } = req.params
-  const { UUID } = req.query
+  const { UUID, last } = req.query
+
+  if (last && !Number.isInteger(Number(last))) {
+    return res.status(400).json({ message: `Parameter ${last} must be an integer` });
+  }
 
   // TODO use nesting when done https://github.com/prisma/prisma/issues/3668
   const answers = await prisma.poll({ name: pollName }).answers()
   const groupedVotes = await pMap(answers, async (answer) => {
-    const votes = await prisma.votes({ where: {
-      uuid: UUID,
-      answer: {
-        id: answer.id
-      }
-    }});
+    const votes = await prisma.votes({
+      where: {
+        uuid: UUID,
+        answer: {
+          id: answer.id
+        }
+      },
+      orderBy: "createdAt_DESC",
+      ...(last && { first: Number(last)}),
+      first: Number(last)
+    });
 
     return votes.map(vote => ({
       id: vote.id,
