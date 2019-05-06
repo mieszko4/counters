@@ -70,7 +70,6 @@ const getPoll = async (name, withStat = false) => {
     }).aggregate().count()
 
     return {
-      id,
       answer: name,
       counter: positiveCount - negativeCount
     }
