@@ -1,1 +1,1 @@
-curl --header "Content-Type: application/json" --request POST --data '{"answers": [{"answer": "Python", "validTill": "2019-01-21T01:22:15.875Z", "counter": 1}]}' http://localhost:3001/v2/polls/YourLanguage3/vote
+curl --header "Content-Type: application/json" --request POST --data '{"answers": [{"answer": "jestemZa", "validTill": "2019-06-21T01:22:15.875Z", "counter": 1}]}' http://localhost:3001/v2/polls/WannaDefaultOne/vote

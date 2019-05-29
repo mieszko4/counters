@@ -45,15 +45,24 @@ const getVoters = async (name) => {
 }
 
 const getPoll = async (name, withStat = false) => {
-  const poll = await prisma.poll({ name })
-  const answers = await prisma.poll({ name }).answers();
-  
-  if (!poll) {
+  const fragment = `
+  fragment pollWithAnswers on Poll {
+    question
+    createdAt
+    answers {
+      id
+      name
+    }
+  }
+  `
+  const pollWithAnswers: any = await prisma.poll({ name }).$fragment(fragment);
+  if (!pollWithAnswers) {
     return null;
   }
 
   await cleanExpiredVotes();
-  const processedAnswers = await pMap(answers, async ({ name, id }) => {
+  // TODO: https://www.prisma.io/forum/t/query-count-of-relation-on-connection/2349/4
+  const processedAnswers = await pMap(pollWithAnswers.answers, async ({ name, id }) => {
     const positiveCount = await prisma.votesConnection({
       where: {
         value_gt: 0,
@@ -76,8 +85,8 @@ const getPoll = async (name, withStat = false) => {
   });
 
   return {
-    question: poll.question,
-    published_at: poll.createdAt,
+    question: pollWithAnswers.question,
+    published_at: pollWithAnswers.createdAt,
     details: {
       answers: processedAnswers,
     },
