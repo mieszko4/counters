@@ -212,7 +212,7 @@ app.delete(`/${version}/polls/:pollName`, wrap(async (req, res) => {
 // votes
 app.get(`/${version}/polls/:pollName/vote`, wrap(async (req, res) => {
   const { pollName } = req.params
-  const { UUID, last } = req.query
+  const { UUID, last, createdAfter } = req.query
 
   if (last && !Number.isInteger(Number(last))) {
     return res.status(400).json({ message: `Parameter ${last} must be an integer` });
@@ -224,6 +224,7 @@ app.get(`/${version}/polls/:pollName/vote`, wrap(async (req, res) => {
     const votes = await prisma.votes({
       where: {
         uuid: UUID,
+        ...(createdAfter && { createdAt_gt: createdAfter }),
         answer: {
           id: answer.id
         }
