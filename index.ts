@@ -383,13 +383,7 @@ app.post(`/${version}/polls/:pollName/params`, wrap(async (req, res) => {
     }
   });
 
-  const newParams = await prisma.poll({ name: pollName }).params();
-  res.status(201).json({
-    params: newParams.map(param => ({
-      paramName: param.key,
-      paramValue: param.value,
-    }))
-  })
+  res.status(204).json({})
 }))
 
 app.delete(`/${version}/polls/:pollName/params`, wrap(async (req, res) => {
