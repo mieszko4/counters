@@ -212,7 +212,7 @@ app.delete(`/${version}/polls/:pollName`, wrap(async (req, res) => {
 // votes
 app.get(`/${version}/polls/:pollName/vote`, wrap(async (req, res) => {
   const { pollName } = req.params
-  const { UUID, last, createdAfter } = req.query
+  const { UUID, last, createdAfter, validOn } = req.query
 
   if (last && !Number.isInteger(Number(last))) {
     return res.status(400).json({ message: `Parameter ${last} must be an integer` });
@@ -225,6 +225,7 @@ app.get(`/${version}/polls/:pollName/vote`, wrap(async (req, res) => {
       where: {
         uuid: UUID,
         ...(createdAfter && { createdAt_gt: createdAfter }),
+        ...(validOn && { validUntil_gte: validOn }),
         answer: {
           id: answer.id
         }
