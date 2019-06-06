@@ -15,15 +15,15 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "body-parser": "^1.18.3",
-    "express": "^4.16.4",
-    "graphql-yoga": "^1.17.0",
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1",
+    "graphql-yoga": "^1.17.4",
     "lodash": "^4.17.11",
-    "p-map": "^2.0.0",
+    "p-map": "^2.1.0",
     "prisma-client-lib": "^1.31.1"
   },
   "devDependencies": {
-    "node-fetch": "^2.3.0",
+    "node-fetch": "^2.6.0",
     "ts-node": "^7.0.1",
     "typescript": "^3.2.4"
   }
