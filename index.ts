@@ -325,7 +325,12 @@ app.get(`/${version}/polls/:pollName/params/:paramName`, wrap(async (req, res) =
 
 app.get(`/${version}/polls/:pollName/params`, wrap(async (req, res) => {
   const { pollName } = req.params
-  const { paramName } = req.query
+  const {
+    paramName,
+    paramNameContains,
+    paramNameStartsWith,
+    paramNameEndsWith
+  } = req.query
 
   const poll = await prisma.poll({ name: pollName });
   if (!poll) {
@@ -334,7 +339,10 @@ app.get(`/${version}/polls/:pollName/params`, wrap(async (req, res) => {
   
   const params = await prisma.poll({ name: pollName }).params({
     where: {
-      key_contains: paramName,
+      key: paramName,
+      key_contains: paramNameContains,
+      key_starts_with: paramNameStartsWith,
+      key_ends_with: paramNameEndsWith,
     }
   });
   res.json({
