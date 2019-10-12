@@ -347,7 +347,7 @@ app.get(`/${version}/polls/:pollName/params`, wrap(async (req, res) => {
       key_ends_with: paramNameEndsWith,
     },
     orderBy,
-    first,
+    first: first !== undefined && Number(first),
   });
   res.json({
     params: params.map(param => ({
