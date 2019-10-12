@@ -325,13 +325,18 @@ app.get(`/${version}/polls/:pollName/params/:paramName`, wrap(async (req, res) =
 
 app.get(`/${version}/polls/:pollName/params`, wrap(async (req, res) => {
   const { pollName } = req.params
+  const { paramName } = req.query
 
   const poll = await prisma.poll({ name: pollName });
   if (!poll) {
     return res.status(404).json({});
   }
   
-  const params = await prisma.poll({ name: pollName }).params();
+  const params = await prisma.poll({ name: pollName }).params({
+    where: {
+      key_contains: paramName,
+    }
+  });
   res.json({
     params: params.map(param => ({
       paramName: param.key,
