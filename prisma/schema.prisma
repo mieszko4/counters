@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Answer {
+  id        String   @id @default(cuid()) @db.VarChar(30)
+  name      String
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  pollId    String?  @map("poll") @db.VarChar(30)
+  poll      Poll?    @relation(fields: [pollId], references: [id], onUpdate: NoAction)
+  votes     Vote[]
+}
+
+model Param {
+  id     String  @id @default(cuid()) @db.VarChar(30)
+  key    String
+  value  String?
+  pollId String? @map("poll") @db.VarChar(30)
+  poll   Poll?   @relation(fields: [pollId], references: [id], onUpdate: NoAction)
+}
+
+model Poll {
+  id        String   @id @default(cuid()) @db.VarChar(30)
+  name      String   @unique(map: "default$default.Poll.name._UNIQUE")
+  question  String
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  answers   Answer[]
+  params    Param[]
+}
+
+model Vote {
+  id         String    @id @default(cuid()) @db.VarChar(30)
+  value      Int
+  uuid       String?
+  isInvalid  Boolean   @default(false)
+  updatedAt  DateTime  @updatedAt
+  createdAt  DateTime  @default(now())
+  validUntil DateTime?
+  answerId   String?   @map("answer") @db.VarChar(30)
+  answer     Answer?   @relation(fields: [answerId], references: [id], onUpdate: NoAction)
+}

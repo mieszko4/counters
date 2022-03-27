@@ -1,8 +1,11 @@
-import { prisma } from './generated/prisma-client'
+import { PrismaClient } from '@prisma/client'
 import { groupBy, flatten } from 'lodash'
 import pMap from 'p-map';
-const express = require('express')
-const bodyParser = require('body-parser')
+import express from 'express'
+import bodyParser from 'body-parser'
+import * as t from 'typed-assert'
+
+const prisma = new PrismaClient()
 
 const app = express()
 app.use(bodyParser.json())
@@ -11,11 +14,13 @@ app.use(bodyParser.json())
 const wrap = fn => (...args) => fn(...args).catch(args[2])
 
 const cleanExpiredVotes = async () => {
-  const result = await prisma.updateManyVotes({
+  const result = await prisma.vote.updateMany({
     data: { isInvalid: true },
     where: {
       isInvalid: false,
-      validUntil_lt: (new Date()).toISOString()
+      validUntil: {
+        lt: (new Date()).toISOString()
+      }
     }
   });
   console.log(`Cleaned up ${result.count} passed votes`);
@@ -23,14 +28,16 @@ const cleanExpiredVotes = async () => {
 
 const getVoters = async (name) => {
   // TODO VERY SLOW - use aggreage value when available - https://github.com/prisma/prisma/issues/1312
-  const allVoters = await prisma.votes({
+  const allVoters = await prisma.vote.findMany({
     where: {
       answer: {
         poll: {
           name
         }
       },
-      uuid_not: null
+      uuid: {
+        not: null
+      }
     }
   });
   const activeVoters = allVoters.filter(voter => !voter.isInvalid)
@@ -45,17 +52,7 @@ const getVoters = async (name) => {
 }
 
 const getPoll = async (name, withStat = false) => {
-  const fragment = `
-  fragment pollWithAnswers on Poll {
-    question
-    createdAt
-    answers {
-      id
-      name
-    }
-  }
-  `
-  const pollWithAnswers: any = await prisma.poll({ name }).$fragment(fragment);
+  const pollWithAnswers = await prisma.poll.findUnique({ where: {name}, include: { answers: true }, });
   if (!pollWithAnswers) {
     return null;
   }
@@ -63,20 +60,24 @@ const getPoll = async (name, withStat = false) => {
   await cleanExpiredVotes();
   // TODO: https://www.prisma.io/forum/t/query-count-of-relation-on-connection/2349/4
   const processedAnswers = await pMap(pollWithAnswers.answers, async ({ name, id }) => {
-    const positiveCount = await prisma.votesConnection({
+    const positiveCount = await prisma.vote.count({
       where: {
-        value_gt: 0,
+        value: {
+          gt: 0,
+        },
         isInvalid: false,
         answer: { id }
       }
-    }).aggregate().count()
-    const negativeCount = await prisma.votesConnection({
+    })
+    const negativeCount = await prisma.vote.count({
       where: {
-        value_lt: 0,
+        value: {
+          lt: 0,
+        },
         isInvalid: false,
         answer: { id }
       }
-    }).aggregate().count()
+    })
 
     return {
       answer: name,
@@ -97,7 +98,7 @@ const getPoll = async (name, withStat = false) => {
 };
 
 const getStat = async (name) => {
-  const poll = await prisma.poll({ name })
+  const poll = await prisma.poll.findUnique({where: { name }})
 
   if (!poll) {
     return null;
@@ -117,13 +118,13 @@ const version = 'v2';
 app.get(`/${version}/polls`, wrap(async (req, res) => {
   const { paramName, paramValue} = req.query;
 
-  const polls = await prisma.polls(paramName || paramValue ? ({
+  const polls = await prisma.poll.findMany(paramName || paramValue ? ({
     where: {
-      params_some: {
+      params: {some: {
         ...paramName && { key: paramName },
         ...(paramName && paramValue) && { value: paramValue },
       }
-    }
+    }}
   }) : undefined)
   res.json({
     polls: polls.map(poll => ({
@@ -160,17 +161,22 @@ app.get(`/${version}/polls/:pollName/stat`, wrap(async (req, res) => {
 app.post(`/${version}/polls`, wrap(async (req, res) => {
   const { body } = req;
 
-  if (await prisma.poll({ name: body.name })) {
+  if (await prisma.poll.findUnique({ where: { name: body.name } })) {
     return res.status(409).json({})
   }
 
-  const newPoll = await prisma.createPoll({
-    name: body.name,
-    question: body.question,
-    answers: {
-      create: body.answers.map(answer => ({
-        name: answer
-      }))
+  const newPoll = await prisma.poll.create({
+    data: {
+      name: body.name,
+      question: body.question,
+      answers: {
+        create: body.answers.map(answer => ({
+          name: answer
+        }))
+      }
+    },
+    select: {
+      name: true
     }
   })
 
@@ -182,12 +188,14 @@ app.post(`/${version}/polls/:pollName/reset`, wrap(async (req, res) => {
   const { pollName } = req.params
   const { body } = req;
 
-  await prisma.updateManyVotes({
+  await prisma.vote.updateMany({
     data: { isInvalid: true },
     where: {
       answer: {
         poll: { name: pollName },
-        name_in: body.answers.map(({ answer }) => answer)
+        name: {
+          in: body.answers.map(({ answer }) => answer)
+        }
       }
     }
   });
@@ -199,12 +207,12 @@ app.post(`/${version}/polls/:pollName/reset`, wrap(async (req, res) => {
 app.delete(`/${version}/polls/:pollName`, wrap(async (req, res) => {
   const { pollName } = req.params
 
-  const poll = await prisma.poll({ name: pollName });
+  const poll = await prisma.poll.findUnique({ where: { name: pollName } });
   if (!poll) {
     return res.status(404).json({});
   }
 
-  await prisma.deletePoll({ name: pollName })
+  await prisma.poll.delete({ where: { name: pollName } })
 
   res.status(204).json({})
 }))
@@ -219,9 +227,9 @@ app.get(`/${version}/polls/:pollName/vote`, wrap(async (req, res) => {
   }
 
   // TODO use nesting when done https://github.com/prisma/prisma/issues/3668
-  const answers = await prisma.poll({ name: pollName }).answers()
+  const answers = await prisma.poll.findUnique({ where: { name: pollName } }).answers()
   const groupedVotes = await pMap(answers, async (answer) => {
-    const votes = await prisma.votes({
+    const votes = await prisma.vote.findMany({
       where: {
         uuid: UUID,
         ...(createdAfter && { createdAt_gt: createdAfter }),
@@ -230,9 +238,10 @@ app.get(`/${version}/polls/:pollName/vote`, wrap(async (req, res) => {
           id: answer.id
         }
       },
-      orderBy: "createdAt_DESC",
-      ...(last && { first: Number(last)}),
-      first: Number(last)
+      orderBy: {
+        createdAt: 'desc',
+      },
+      ...(last && { take: Number(last)}),
     });
 
     return votes.map(vote => ({
@@ -253,10 +262,33 @@ app.post(`/${version}/polls/:pollName/vote`, wrap(async (req, res) => {
   const { pollName } = req.params
   const { body } = req;
 
-  const answers = await prisma.poll({ name: pollName }).answers()
+  const answers = await prisma.poll.findUnique({ where: { name: pollName } }).answers()
 
   // verify
-  body.answers.forEach(({ answer, counter }) => {
+  // TODO: verify other body requests
+  const bodyAnswers = body.answers
+  t.isArray(bodyAnswers)
+
+  const verifiedBodyAnswers = bodyAnswers.map((o: any) => {
+    t.isNotUndefined(o)
+    const {
+      answer,
+      counter,
+      validTill,
+      UUID
+    } = o;
+    t.isString(answer)
+    t.isNumber(counter)
+
+    return {
+      answer,
+      counter,
+      validTill,
+      UUID,
+    }
+  })
+
+  verifiedBodyAnswers.forEach(({ answer, counter }) => {
     if (!answers.find(a => a.name === answer)) {
       return res.status(400).json({ message: `answer ${answer} does not exist in poll ${pollName}` });
     }
@@ -266,16 +298,18 @@ app.post(`/${version}/polls/:pollName/vote`, wrap(async (req, res) => {
     }
   })
 
-  await pMap(body.answers, async ({ answer, counter, validTill, UUID }) => {
+  await pMap(verifiedBodyAnswers, async ({ answer, counter, validTill, UUID }) => {
     const answerId = answers.find(a => a.name === answer).id;
 
-    await prisma.createVote({
-      value: counter,
-      validUntil: validTill,
-      ...(UUID ? { uuid: UUID } : {}),
-      answer: {
-        connect: {
-          id: answerId
+    await prisma.vote.create({
+      data: {
+        value: counter,
+        validUntil: validTill,
+        ...(UUID ? { uuid: UUID } : {}),
+        answer: {
+          connect: {
+            id: answerId
+          }
         }
       }
     })
@@ -288,17 +322,17 @@ app.post(`/${version}/polls/:pollName/vote`, wrap(async (req, res) => {
 app.delete(`/${version}/polls/:pollName/vote/:voteId`, wrap(async (req, res) => {
   const { pollName, voteId } = req.params
 
-  const poll = await prisma.poll({ name: pollName });
+  const poll = await prisma.poll.findUnique({ where: { name: pollName } });
   if (!poll) {
     return res.status(404).json({});
   }
 
-  const vote = await prisma.vote({ id: voteId });
+  const vote = await prisma.vote.findUnique({ where: { id: voteId } });
   if (!vote) {
     return res.status(404).json({});
   }
 
-  await prisma.deleteVote({ id: voteId })
+  await prisma.vote.delete({ where: { id: voteId } })
 
   res.status(204).json({})
 }))
@@ -307,12 +341,12 @@ app.delete(`/${version}/polls/:pollName/vote/:voteId`, wrap(async (req, res) => 
 app.get(`/${version}/polls/:pollName/params/:paramName`, wrap(async (req, res) => {
   const { pollName, paramName } = req.params
 
-  const poll = await prisma.poll({ name: pollName });
+  const poll = await prisma.poll.findUnique({ where: { name: pollName } });
   if (!poll) {
     return res.status(404).json({});
   }
   
-  const [param] = await prisma.poll({name: pollName}).params({ where: { key: paramName }});
+  const [param] = await prisma.poll.findUnique({ where: { name: pollName } }).params({ where: { key: paramName }});
   if (!param) {
     return res.status(404).json({});
   }
@@ -334,20 +368,22 @@ app.get(`/${version}/polls/:pollName/params`, wrap(async (req, res) => {
     first,
   } = req.query
 
-  const poll = await prisma.poll({ name: pollName });
+  const poll = await prisma.poll.findUnique({ where: { name: pollName } });
   if (!poll) {
     return res.status(404).json({});
   }
   
-  const params = await prisma.poll({ name: pollName }).params({
+  const params = await prisma.poll.findUnique({ where: { name: pollName } }).params({
     where: {
-      key: paramName,
-      key_contains: paramNameContains,
-      key_starts_with: paramNameStartsWith,
-      key_ends_with: paramNameEndsWith,
+      key: {
+        equals: paramName,
+        contains: paramNameContains,
+        startsWith: paramNameStartsWith,
+        endsWith: paramNameEndsWith,
+      },
     },
     orderBy,
-    first: first !== undefined && Number(first),
+    take: first !== undefined && Number(first),
   });
   res.json({
     params: params.map(param => ({
@@ -366,18 +402,23 @@ app.post(`/${version}/polls/:pollName/params`, wrap(async (req, res) => {
     return res.status(400).json({ message: 'params is malformed' });
   }
 
-  const poll = await prisma.poll({ name: pollName });
+  const poll = await prisma.poll.findUnique({ where: { name: pollName } });
   if (!poll) {
     return res.status(404).json({});
   }
 
   await pMap(params, async (parameter) => {
-    const paramExists = await prisma.$exists.param({ key: parameter.paramName, poll: {
-      name: pollName
-    } });
+    const paramExists = (await prisma.param.count({
+      where: {
+        key: parameter.paramName,
+        poll: {
+          name: pollName
+        }
+      }
+    }) > 0);
 
     if (!paramExists) {
-      await prisma.createParam({
+      await prisma.param.create({ data: {
         key: parameter.paramName,
         value: parameter.paramValue,
         poll: {
@@ -385,9 +426,9 @@ app.post(`/${version}/polls/:pollName/params`, wrap(async (req, res) => {
             name: pollName
           }
         }
-      })
+      }})
     } else {
-      await prisma.updateManyParams({
+      await prisma.param.updateMany({
         where: {
           key: parameter.paramName,
           poll: {
@@ -407,14 +448,14 @@ app.post(`/${version}/polls/:pollName/params`, wrap(async (req, res) => {
 app.delete(`/${version}/polls/:pollName/params`, wrap(async (req, res) => {
   const { pollName } = req.params
 
-  const poll = await prisma.poll({ name: pollName });
+  const poll = await prisma.poll.findUnique({ where: { name: pollName } });
   if (!poll) {
     return res.status(404).json({});
   }
 
-  await prisma.deleteManyParams({ poll: {
+  await prisma.param.deleteMany({ where: { poll: {
     name: pollName
-  }})
+  }}})
 
   res.status(204).json({})
 }))
@@ -422,17 +463,17 @@ app.delete(`/${version}/polls/:pollName/params`, wrap(async (req, res) => {
 app.delete(`/${version}/polls/:pollName/params/:paramName`, wrap(async (req, res) => {
   const { pollName, paramName } = req.params
 
-  const poll = await prisma.poll({ name: pollName });
+  const poll = await prisma.poll.findUnique({ where: { name: pollName } });
   if (!poll) {
     return res.status(404).json({});
   }
   
-  const [param] = await prisma.poll({name: pollName}).params({ where: { key: paramName }});
+  const [param] = await prisma.poll.findUnique({ where: { name: pollName }}).params({ where: { key: paramName }});
   if (!param) {
     return res.status(404).json({});
   }
 
-  await prisma.deleteManyParams({ key: paramName, poll: { name: pollName} })
+  await prisma.param.deleteMany({ where: { key: paramName, poll: { name: pollName } } })
 
   res.status(204).json({})
 }))
