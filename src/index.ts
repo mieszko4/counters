@@ -478,4 +478,5 @@ app.delete(`/${version}/polls/:pollName/params/:paramName`, wrap(async (req, res
   res.status(204).json({})
 }))
 
-app.listen(3001, () => console.log('Server is running on http://localhost:3001'))
+export default app
+
